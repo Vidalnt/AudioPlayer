@@ -1,9 +1,12 @@
 {
+  "homepage": "https://theusernil.github.io/AudioPlayer/",
   "name": "audioplayer",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "predeploy":"npm run build",
+    "deploy":"gh-pages -d build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -19,6 +22,7 @@
     "autoprefixer": "^10",
     "eslint": "^8",
     "eslint-config-next": "14.0.0",
+    "gh-pages": "^6.0.0",
     "postcss": "^8",
     "tailwindcss": "^3"
   }
