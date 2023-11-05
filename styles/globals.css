@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
@@ -17,6 +16,8 @@
 }
 
 body {
+  height: 100vh; /* Establece la altura del cuerpo como el 100% de la altura de la ventana (viewport) */
+  overflow: hidden; /* Oculta las barras de desplazamiento */
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
