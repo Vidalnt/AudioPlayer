@@ -6,7 +6,8 @@ import 'react-h5-audio-player/lib/styles.css'; // Importa los estilos de la bibl
 
 const AudioPlayer = () => {
   const router = useRouter();
-  const audioLink = router.query.link;
+  let audioLink = router.asPath;
+  audioLink = decodeURIComponent(audioLink.replace("link=", "").replace("/?", ""));
   const [isHovered, setHovered] = useState(false);
   const [isPlaying, setPlaying] = useState(false);
   //const audioRef = useRef(null);
@@ -19,19 +20,10 @@ const AudioPlayer = () => {
   };
 
   useEffect(() => {
-    //if (audioRef.current) {
-      //audioRef.current.src = audioLink; // Actualiza el src del elemento de audio
-    //}
-
-    
-
-    //audioRef.current.addEventListener('play', playListener);
-    //audioRef.current.addEventListener('pause', pauseListener);
-
-    return () => {
-      //audioRef.current.removeEventListener('play', playListener);
-      //audioRef.current.removeEventListener('pause', pauseListener);
-    };
+    if (audioLink) {
+      const audioElement = document.querySelector('audio'); 
+      audioElement.src = audioLink; 
+    }
   }, [audioLink]);
 
   const [particles, setParticles] = useState([]);
@@ -133,7 +125,6 @@ const AudioPlayer = () => {
           background_color: '#333',
         }}
         autoPlay
-        src={audioLink}
         onPlay={handlePlay}
         onPause={handlePause}
       />
