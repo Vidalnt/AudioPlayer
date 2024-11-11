@@ -5,9 +5,9 @@ import AudioPlayer from '@/components/AudioPlayer';
 
 export default function Home() {
   const searchParams = useSearchParams();
-  const audioUrl = searchParams.get('link');
+  const link = searchParams.get('link');
 
-  if (!audioUrl) {
+  if (!link) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
         <div className="text-center text-white">
@@ -21,6 +21,8 @@ export default function Home() {
       </div>
     );
   }
+
+  const audioUrl = decodeURIComponent(searchParams.toString().replace("link=", ""))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
