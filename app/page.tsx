@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,20 @@ interface FavoriteAudio {
 // Global theme state to prevent flicker
 let globalTheme: boolean | null = null
 let themeInitialized = false
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-white/20 border-t-white/80 rounded-full animate-spin"></div>
+          <Music className="w-6 h-6 text-white/80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <p className="text-white/60 text-sm font-light">Loading...</p>
+      </div>
+    </div>
+  )
+}
 
 function HomeContent() {
   const { t } = useLanguage()
@@ -83,8 +97,6 @@ function HomeContent() {
     localStorage.setItem("audioPlayerFavorites", JSON.stringify(favorites))
   }, [favorites])
 
-
-
   const handleRedirect = () => {
     router.push(`/?link=${encodeURIComponent(editableLink)}`)
   }
@@ -95,8 +107,6 @@ function HomeContent() {
     globalTheme = newTheme
     localStorage.setItem("audioPlayerTheme", newTheme ? "night" : "day")
   }
-
-
 
   const getAudioTitle = (url: string) => {
     try {
@@ -120,17 +130,7 @@ function HomeContent() {
 
   // Show loading screen only on first ever page load
   if (!themeLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-white/20 border-t-white/80 rounded-full animate-spin"></div>
-            <Music className="w-6 h-6 text-white/80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-          </div>
-          <p className="text-white/60 text-sm font-light">Loading...</p>
-        </div>
-      </div>
-    )
+    return <LoadingFallback />
   }
 
   return (
@@ -398,11 +398,12 @@ function HomeContent() {
   )
 }
 
-// Componente principal exportado envuelto en SkyProvider
 export default function Home() {
   return (
     <SkyProvider>
-      <HomeContent />
+      <Suspense fallback={<LoadingFallback />}>
+        <HomeContent />
+      </Suspense>
     </SkyProvider>
   )
 }
