@@ -1,0 +1,37 @@
+{
+  "header": {
+    "title": "Audio Player",
+    "description": {
+      "night": "Music in the quiet of the night",
+      "day": "Melodies under the open sky"
+    }
+  },
+  "navigation": {
+    "play": "Play",
+    "favorites": "Favorites"
+  },
+  "input": {
+    "placeholder": "https://example.com/audio.mp3",
+    "examples": "Try these examples:"
+  },
+  "player": {
+    "playingNight": "Playing in the night",
+    "playingDay": "Playing under the sky",
+    "untitledAudio": "Untitled Audio"
+  },
+  "favorites": {
+    "title": "Favorite Tracks",
+    "empty": {
+      "title": "No favorites yet",
+      "description": "Heart your favorite tracks to see them here"
+    },
+    "added": "Added:"
+  },
+  "alerts": {
+    "playError": "Could not play audio. Please verify that the URL is valid.",
+    "loadError": "Error loading audio. Please verify that the URL is correct."
+  },
+  "language": {
+    "selector": "Select Language"
+  }
+}

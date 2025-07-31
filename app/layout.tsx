@@ -1,11 +1,13 @@
-import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-import './globals.css'
+import type React from "react"
+import type { Metadata } from "next"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+import { LanguageProvider } from "@/hooks/use-language"
+import "./globals.css"
 
 export const metadata: Metadata = {
-  title: 'Audio Player',
-  description: 'Audio Player',
+  title: "Audio Player",
+  description: "Audio Player with beautiful animated backgrounds",
 }
 
 export default function RootLayout({
@@ -24,7 +26,9 @@ html {
 }
         `}</style>
       </head>
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   )
 }

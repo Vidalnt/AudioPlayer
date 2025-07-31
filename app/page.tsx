@@ -5,7 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Music, Moon, Sun, Heart, Play, Trash2 } from "lucide-react"
-import AudioPlayer from "@/components/AudioPlayer"
+import AudioPlayer from "@/components/audio-player"
+import DaySky from "@/components/day-sky"
+import NightSky from "@/components/night-sky"
+import RainEffect from "@/components/rain-effect"
+import LanguageSelector from "@/components/language-selector"
+import { useLanguage } from "@/hooks/use-language"
+import { SkyProvider } from "@/contexts/sky"
 
 interface FavoriteAudio {
   id: string
@@ -14,21 +20,58 @@ interface FavoriteAudio {
   addedAt: string
 }
 
-export default function Home() {
+// Global theme state to prevent flicker
+let globalTheme: boolean | null = null
+let themeInitialized = false
+
+function HomeContent() {
+  const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const link = searchParams.get("link")
   const [editableLink, setEditableLink] = useState(link || "")
-  const [isNight, setIsNight] = useState(true)
-  const [activeTab, setActiveTab] = useState<"play" | "historial">("play")
+  const [isNight, setIsNight] = useState(() => {
+    return globalTheme !== null ? globalTheme : false
+  })
+  const [themeLoaded, setThemeLoaded] = useState(themeInitialized)
+  const [activeTab, setActiveTab] = useState<"play" | "favorites">("play")
   const [favorites, setFavorites] = useState<FavoriteAudio[]>([])
+
   const exampleUrls = [
     "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
     "https://files.catbox.moe/5bl6mi.flac",
     "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3",
   ]
 
-  // Load favorites from localStorage on mount
+  // Update editableLink when URL changes
+  useEffect(() => {
+    setEditableLink(link || "")
+  }, [link])
+
+  // Load saved theme preference
+  useEffect(() => {
+    if (!themeInitialized) {
+      const loadTheme = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        const savedTheme = localStorage.getItem("audioPlayerTheme")
+        const newTheme = savedTheme === "night"
+
+        setIsNight(newTheme)
+        globalTheme = newTheme
+        setThemeLoaded(true)
+        themeInitialized = true
+      }
+
+      loadTheme()
+    } else {
+      if (globalTheme !== null) {
+        setIsNight(globalTheme)
+      }
+      setThemeLoaded(true)
+    }
+  }, [])
+
   useEffect(() => {
     const savedFavorites = localStorage.getItem("audioPlayerFavorites")
     if (savedFavorites) {
@@ -36,32 +79,33 @@ export default function Home() {
     }
   }, [])
 
-  // Save favorites to localStorage whenever favorites change
   useEffect(() => {
     localStorage.setItem("audioPlayerFavorites", JSON.stringify(favorites))
   }, [favorites])
+
+
 
   const handleRedirect = () => {
     router.push(`/?link=${encodeURIComponent(editableLink)}`)
   }
 
-  const useExampleUrl = (url: string) => {
-    setEditableLink(url)
-    router.push(`/?link=${encodeURIComponent(url)}`)
+  const toggleTheme = () => {
+    const newTheme = !isNight
+    setIsNight(newTheme)
+    globalTheme = newTheme
+    localStorage.setItem("audioPlayerTheme", newTheme ? "night" : "day")
   }
 
-  const toggleTheme = () => {
-    setIsNight(!isNight)
-  }
+
 
   const getAudioTitle = (url: string) => {
     try {
       const urlObj = new URL(url)
       const pathname = urlObj.pathname
       const filename = pathname.split("/").pop() || "Audio"
-      return filename.replace(/\.[^/.]+$/, "") // Remove extension
+      return filename.replace(/\.[^/.]+$/, "")
     } catch {
-      return "Audio sin título"
+      return t("player.untitledAudio")
     }
   }
 
@@ -74,83 +118,77 @@ export default function Home() {
     setFavorites((prev) => prev.filter((fav) => fav.id !== id))
   }
 
-  return (
-    <div
-      className={`min-h-screen relative overflow-hidden transition-all duration-1000 ease-in-out ${
-        isNight ? "night-theme" : "day-theme"
-      }`}
-    >
-      {/* Dynamic Background */}
-      <div
-        className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-          isNight
-            ? "bg-gradient-to-b from-black via-gray-950 to-black"
-            : "bg-gradient-to-b from-blue-400 via-blue-300 to-blue-500"
-        }`}
-      ></div>
-
-      {/* Animated Background Layers */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className={`transition-opacity duration-1000 ease-in-out ${isNight ? "opacity-100" : "opacity-0"}`}>
-          <div className="dark-cloud-layer-1"></div>
-          <div className="dark-cloud-layer-2"></div>
-          <div className="dark-cloud-layer-3"></div>
-        </div>
-
-        <div className={`transition-opacity duration-1000 ease-in-out ${isNight ? "opacity-0" : "opacity-100"}`}>
-          <div className="light-cloud-layer-1"></div>
-          <div className="light-cloud-layer-2"></div>
-          <div className="light-cloud-layer-3"></div>
+  // Show loading screen only on first ever page load
+  if (!themeLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-white/20 border-t-white/80 rounded-full animate-spin"></div>
+            <Music className="w-6 h-6 text-white/80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="text-white/60 text-sm font-light">Loading...</p>
         </div>
       </div>
+    )
+  }
 
-      {/* Stars (only at night) */}
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Sky Backgrounds */}
       <div
-        className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ease-in-out ${
+        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out z-0 ${
+          isNight ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <DaySky />
+      </div>
+
+      <div
+        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out z-0 ${
           isNight ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="dim-star dim-star-1"></div>
-        <div className="dim-star dim-star-2"></div>
-        <div className="dim-star dim-star-3"></div>
-        <div className="dim-star dim-star-4"></div>
-        <div className="dim-star dim-star-5"></div>
-        <div className="dim-star dim-star-6"></div>
+        <NightSky />
       </div>
+
+      {/* Rain Effect - Controlado por el reproductor de audio */}
+      <RainEffect isPlaying={!!link} isNight={isNight} />
+
+      {/* Language Selector */}
+      <LanguageSelector isNight={isNight} />
 
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 gap-8">
-        {/* Header Section */}
+        {/* Header */}
         <div className="text-center space-y-6">
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex items-center justify-center gap-4 mb-6">
             <div
-              className={`p-3 backdrop-blur-lg rounded-2xl border shadow-lg transition-all duration-1000 ease-in-out ${
-                isNight
-                  ? "bg-black/60 border-gray-800/40 shadow-black/40"
-                  : "bg-white/60 border-white/40 shadow-blue-500/20"
+              className={`p-3 backdrop-blur-sm rounded-xl border transition-all duration-1000 ease-in-out ${
+                isNight ? "bg-black/10 border-white/10" : "bg-white/10 border-white/20"
               }`}
             >
               <Music
-                className={`w-8 h-8 transition-colors duration-1000 ease-in-out ${
-                  isNight ? "text-gray-300" : "text-blue-700"
+                className={`w-7 h-7 transition-colors duration-1000 ease-in-out ${
+                  isNight ? "text-white/80" : "text-blue-800/80"
                 }`}
               />
             </div>
 
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-full transition-all duration-500 ease-in-out transform hover:scale-110 ${
-                isNight ? "bg-yellow-500/20 hover:bg-yellow-500/30" : "bg-indigo-500/20 hover:bg-indigo-500/30"
+              className={`p-2.5 rounded-full transition-all duration-500 ease-in-out transform hover:scale-110 ${
+                isNight ? "bg-yellow-400/10 hover:bg-yellow-400/20" : "bg-indigo-500/10 hover:bg-indigo-500/20"
               }`}
             >
-              <div className="relative w-6 h-6">
+              <div className="relative w-5 h-5">
                 <Sun
-                  className={`absolute inset-0 w-6 h-6 text-yellow-500 transition-all duration-500 ease-in-out ${
+                  className={`absolute inset-0 w-5 h-5 text-yellow-400 transition-all duration-500 ease-in-out ${
                     isNight ? "opacity-0 rotate-180 scale-0" : "opacity-100 rotate-0 scale-100"
                   }`}
                 />
                 <Moon
-                  className={`absolute inset-0 w-6 h-6 text-indigo-300 transition-all duration-500 ease-in-out ${
+                  className={`absolute inset-0 w-5 h-5 text-indigo-200 transition-all duration-500 ease-in-out ${
                     isNight ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-180 scale-0"
                   }`}
                 />
@@ -159,64 +197,60 @@ export default function Home() {
           </div>
 
           <h1
-            className={`text-6xl font-bold mb-4 animate-fade-in transition-all duration-1000 ease-in-out ${
-              isNight
-                ? "bg-gradient-to-r from-gray-200 via-gray-300 to-gray-400 bg-clip-text text-transparent"
-                : "bg-gradient-to-r from-blue-800 via-blue-700 to-blue-900 bg-clip-text text-transparent"
+            className={`text-5xl font-light mb-4 transition-all duration-1000 ease-in-out ${
+              isNight ? "text-white/90 drop-shadow-2xl" : "text-blue-900/90 drop-shadow-lg"
             }`}
           >
-            Audio Player
+            {t("header.title")}
           </h1>
 
           <p
-            className={`text-xl max-w-2xl mx-auto leading-relaxed animate-fade-in-delayed transition-colors duration-1000 ease-in-out ${
-              isNight ? "text-gray-300/70" : "text-blue-800/80"
+            className={`text-lg max-w-xl mx-auto leading-relaxed font-light transition-colors duration-1000 ease-in-out ${
+              isNight ? "text-white/60" : "text-blue-800/70"
             }`}
           >
-            {isNight
-              ? "Música en la oscuridad de la noche, acompañada por la lluvia silenciosa"
-              : "Disfruta la música bajo el cielo azul con la lluvia refrescante del día"}
+            {isNight ? t("header.description.night") : t("header.description.day")}
           </p>
         </div>
 
-        {/* Tab Navigation - SIEMPRE VISIBLE en la parte superior */}
-        <div className="w-full max-w-2xl mx-auto">
+        {/* Tab Navigation */}
+        <div className="w-full max-w-lg mx-auto">
           <div
-            className={`flex rounded-2xl p-1 transition-all duration-1000 ease-in-out ${
+            className={`flex rounded-xl p-1 transition-all duration-1000 ease-in-out ${
               isNight
-                ? "bg-black/40 backdrop-blur-xl border border-gray-800/30"
-                : "bg-white/40 backdrop-blur-xl border border-white/30"
+                ? "bg-black/10 backdrop-blur-sm border border-white/5"
+                : "bg-white/10 backdrop-blur-sm border border-white/10"
             }`}
           >
             <button
               onClick={() => setActiveTab("play")}
-              className={`flex-1 py-3 px-6 rounded-xl text-sm font-medium transition-all duration-300 ${
+              className={`flex-1 py-2.5 px-5 rounded-lg text-sm font-light transition-all duration-300 ${
                 activeTab === "play"
                   ? isNight
-                    ? "bg-gray-700 text-white shadow-lg"
-                    : "bg-white text-blue-900 shadow-lg"
+                    ? "bg-white/15 text-white/90"
+                    : "bg-white/20 text-blue-900/90"
                   : isNight
-                    ? "text-gray-400 hover:text-gray-200"
-                    : "text-blue-600 hover:text-blue-800"
+                    ? "text-white/60 hover:text-white/80"
+                    : "text-blue-700/70 hover:text-blue-900/80"
               }`}
             >
-              Play
+              {t("navigation.play")}
             </button>
             <button
-              onClick={() => setActiveTab("historial")}
-              className={`flex-1 py-3 px-6 rounded-xl text-sm font-medium transition-all duration-300 ${
-                activeTab === "historial"
+              onClick={() => setActiveTab("favorites")}
+              className={`flex-1 py-2.5 px-5 rounded-lg text-sm font-light transition-all duration-300 ${
+                activeTab === "favorites"
                   ? isNight
-                    ? "bg-gray-700 text-white shadow-lg"
-                    : "bg-white text-blue-900 shadow-lg"
+                    ? "bg-white/15 text-white/90"
+                    : "bg-white/20 text-blue-900/90"
                   : isNight
-                    ? "text-gray-400 hover:text-gray-200"
-                    : "text-blue-600 hover:text-blue-800"
+                    ? "text-white/60 hover:text-white/80"
+                    : "text-blue-700/70 hover:text-blue-900/80"
               }`}
             >
               <div className="flex items-center justify-center gap-2">
-                <Heart className="w-4 h-4" />
-                Favoritos ({favorites.length})
+                <Heart className="w-3.5 h-3.5" />
+                {t("navigation.favorites")} ({favorites.length})
               </div>
             </button>
           </div>
@@ -226,57 +260,49 @@ export default function Home() {
         {activeTab === "play" ? (
           <>
             {/* Input Section */}
-            <div className="w-full max-w-2xl mx-auto">
+            <div className="w-full max-w-xl mx-auto">
               <div
-                className={`backdrop-blur-xl border rounded-3xl p-8 shadow-2xl transition-all duration-1000 ease-in-out hover:scale-105 ${
-                  isNight
-                    ? "bg-black/40 border-gray-800/30 hover:shadow-black/50"
-                    : "bg-white/40 border-white/30 hover:shadow-blue-500/25"
+                className={`backdrop-blur-sm border rounded-xl p-6 transition-all duration-1000 ease-in-out hover:scale-[1.02] ${
+                  isNight ? "bg-black/10 border-white/10" : "bg-white/10 border-white/15"
                 }`}
               >
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-3 items-center">
                   <div className="flex-1 relative">
                     <Input
                       type="url"
-                      placeholder="https://ejemplo.com/audio.mp3"
+                      placeholder={t("input.placeholder")}
                       value={editableLink}
                       onChange={(e) => setEditableLink(e.target.value)}
-                      className={`h-14 text-lg rounded-2xl transition-all duration-1000 ease-in-out ${
+                      className={`h-11 text-sm rounded-lg transition-all duration-1000 ease-in-out border-0 ${
                         isNight
-                          ? "bg-black/30 border-gray-700/40 text-gray-200 placeholder:text-gray-400/60 focus:border-gray-600 focus:ring-gray-600/50"
-                          : "bg-white/30 border-blue-300/40 text-blue-900 placeholder:text-blue-600/60 focus:border-blue-500 focus:ring-blue-500/50"
+                          ? "bg-black/20 text-white/90 placeholder:text-white/40 focus:bg-black/30"
+                          : "bg-white/20 text-blue-900/90 placeholder:text-blue-600/50 focus:bg-white/30"
                       }`}
                     />
-                    <div
-                      className={`absolute inset-0 rounded-2xl opacity-0 hover:opacity-100 transition-all duration-300 pointer-events-none ${
-                        isNight
-                          ? "bg-gradient-to-r from-gray-800/10 to-gray-700/10"
-                          : "bg-gradient-to-r from-blue-400/10 to-blue-500/10"
-                      }`}
-                    ></div>
                   </div>
                   <Button
                     onClick={handleRedirect}
-                    className={`h-14 px-8 rounded-2xl shadow-lg transition-all duration-1000 ease-in-out transform hover:scale-105 ${
+                    className={`h-11 px-6 rounded-lg transition-all duration-1000 ease-in-out transform hover:scale-105 ${
                       isNight
-                        ? "bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 hover:shadow-gray-800/50"
-                        : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow-blue-500/50"
+                        ? "bg-white/15 hover:bg-white/25 text-white border-0"
+                        : "bg-blue-600/20 hover:bg-blue-600/30 text-blue-800 border-0"
                     }`}
-                    size="lg"
+                    size="sm"
                   >
-                    <ArrowRight className="h-5 w-5" />
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
+
                 {/* Example URLs */}
                 <div className="mt-4">
                   <p
-                    className={`text-sm mb-2 transition-colors duration-1000 ease-in-out ${
-                      isNight ? "text-gray-400" : "text-blue-600"
+                    className={`text-xs mb-2 font-light transition-colors duration-1000 ease-in-out ${
+                      isNight ? "text-white/50" : "text-blue-700/60"
                     }`}
                   >
-                    URLs de ejemplo:
+                    {t("input.examples")}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {exampleUrls.map((url, index) => (
                       <button
                         key={index}
@@ -284,13 +310,13 @@ export default function Home() {
                           setEditableLink(url)
                           router.push(`/?link=${encodeURIComponent(url)}`)
                         }}
-                        className={`px-3 py-1 text-xs rounded-lg transition-all duration-300 hover:scale-105 ${
+                        className={`px-2.5 py-1 text-xs rounded-md transition-all duration-300 hover:scale-105 font-light ${
                           isNight
-                            ? "bg-gray-700/50 text-gray-300 hover:bg-gray-600/50"
-                            : "bg-blue-100/50 text-blue-700 hover:bg-blue-200/50"
+                            ? "bg-white/10 text-white/70 hover:bg-white/20"
+                            : "bg-white/15 text-blue-700/80 hover:bg-white/25"
                         }`}
                       >
-                        Ejemplo {index + 1}
+                        {index + 1}
                       </button>
                     ))}
                   </div>
@@ -300,85 +326,65 @@ export default function Home() {
 
             {/* Audio Player */}
             {link && (
-              <div className="w-full animate-slide-up">
+              <div className="w-full">
                 <AudioPlayer audioUrl={link} isNight={isNight} favorites={favorites} setFavorites={setFavorites} />
               </div>
             )}
           </>
         ) : (
-          /* Historial Tab Content */
-          <div className="w-full max-w-4xl mx-auto">
+          /* Favorites Tab */
+          <div className="w-full max-w-3xl mx-auto">
             <div
-              className={`backdrop-blur-2xl p-10 rounded-3xl shadow-2xl border transition-all duration-1000 ease-in-out ${
-                isNight ? "bg-black/70 text-white border-gray-900/40" : "bg-white/70 text-blue-900 border-white/40"
+              className={`backdrop-blur-sm p-8 rounded-xl border transition-all duration-1000 ease-in-out ${
+                isNight ? "bg-black/10 text-white border-white/10" : "bg-white/10 text-blue-900 border-white/15"
               }`}
             >
-              <h3
-                className={`text-xl font-semibold mb-6 transition-colors duration-1000 ease-in-out ${
-                  isNight ? "text-white" : "text-blue-900"
-                }`}
-              >
-                Audios Favoritos
-              </h3>
+              <h3 className="text-lg font-light mb-6">{t("favorites.title")}</h3>
 
               {favorites.length === 0 ? (
                 <div
                   className={`text-center py-12 transition-colors duration-1000 ease-in-out ${
-                    isNight ? "text-gray-400" : "text-blue-600"
+                    isNight ? "text-white/60" : "text-blue-700/70"
                   }`}
                 >
-                  <Heart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No tienes audios favoritos aún</p>
-                  <p className="text-sm opacity-70">Dale corazón a tus audios favoritos para verlos aquí</p>
+                  <Heart className="w-10 h-10 mx-auto mb-4 opacity-40" />
+                  <p className="text-base mb-2 font-light">{t("favorites.empty.title")}</p>
+                  <p className="text-sm opacity-70 font-light">{t("favorites.empty.description")}</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-2 max-h-80 overflow-y-auto overflow-x-hidden">
                   {favorites.map((favorite) => (
                     <div
                       key={favorite.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${
+                      className={`flex items-center gap-4 p-3 rounded-lg border transition-all duration-300 ${
                         isNight
-                          ? "bg-gray-800/30 border-gray-700/30 hover:bg-gray-800/50"
-                          : "bg-white/30 border-blue-200/30 hover:bg-white/50"
+                          ? "bg-white/5 border-white/5 hover:bg-white/10"
+                          : "bg-white/10 border-white/10 hover:bg-white/20"
                       }`}
                     >
                       <button
                         onClick={() => playFromHistory(favorite.url)}
-                        className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${
-                          isNight ? "bg-gray-700 hover:bg-gray-600" : "bg-blue-100 hover:bg-blue-200"
+                        className={`p-2 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                          isNight ? "bg-white/10 hover:bg-white/20" : "bg-blue-100/30 hover:bg-blue-200/40"
                         }`}
                       >
-                        <Play
-                          className={`w-4 h-4 transition-colors duration-1000 ease-in-out ${
-                            isNight ? "text-gray-300" : "text-blue-700"
-                          }`}
-                        />
+                        <Play className="w-3.5 h-3.5" />
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <h4
-                          className={`font-medium truncate transition-colors duration-1000 ease-in-out ${
-                            isNight ? "text-white" : "text-blue-900"
-                          }`}
-                        >
-                          {favorite.title}
-                        </h4>
+                        <h4 className="font-light truncate text-sm">{favorite.title}</h4>
                         <p
-                          className={`text-sm opacity-70 transition-colors duration-1000 ease-in-out ${
-                            isNight ? "text-gray-400" : "text-blue-600"
-                          }`}
+                          className={`text-xs opacity-60 font-light ${isNight ? "text-white/50" : "text-blue-700/60"}`}
                         >
-                          Agregado: {favorite.addedAt}
+                          {t("favorites.added")} {favorite.addedAt}
                         </p>
                       </div>
 
                       <button
                         onClick={() => removeFavorite(favorite.id)}
-                        className={`p-2 rounded-lg transition-all duration-300 hover:scale-110 ${
-                          isNight ? "hover:bg-red-900/30" : "hover:bg-red-100/30"
-                        }`}
+                        className="p-1.5 rounded-lg transition-all duration-300 hover:scale-110 hover:bg-red-500/10"
                       >
-                        <Trash2 className="w-4 h-4 text-red-500 hover:text-red-400 transition-colors" />
+                        <Trash2 className="w-3.5 h-3.5 text-red-400/70 hover:text-red-400 transition-colors" />
                       </button>
                     </div>
                   ))}
@@ -389,5 +395,14 @@ export default function Home() {
         )}
       </div>
     </div>
+  )
+}
+
+// Componente principal exportado envuelto en SkyProvider
+export default function Home() {
+  return (
+    <SkyProvider>
+      <HomeContent />
+    </SkyProvider>
   )
 }

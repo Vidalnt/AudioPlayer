@@ -1,0 +1,37 @@
+{
+  "header": {
+    "title": "Reproductor de Audio",
+    "description": {
+      "night": "Música en la quietud de la noche",
+      "day": "Melodías bajo el cielo abierto"
+    }
+  },
+  "navigation": {
+    "play": "Reproducir",
+    "favorites": "Favoritos"
+  },
+  "input": {
+    "placeholder": "https://ejemplo.com/audio.mp3",
+    "examples": "Prueba estos ejemplos:"
+  },
+  "player": {
+    "playingNight": "Sonando en la oscuridad",
+    "playingDay": "Sonando bajo el cielo",
+    "untitledAudio": "Audio sin título"
+  },
+  "favorites": {
+    "title": "Pistas Favoritas",
+    "empty": {
+      "title": "Aún no tienes favoritos",
+      "description": "Dale corazón a tus pistas favoritas para verlas aquí"
+    },
+    "added": "Agregado:"
+  },
+  "alerts": {
+    "playError": "No se pudo reproducir el audio. Verifica que la URL sea válida.",
+    "loadError": "Error al cargar el audio. Verifica que la URL sea correcta."
+  },
+  "language": {
+    "selector": "Seleccionar Idioma"
+  }
+}
